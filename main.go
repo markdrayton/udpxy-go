@@ -18,10 +18,10 @@ import (
 const bufsize = 2048
 
 type client struct {
+	client string
 	source string
-	dest   string
 	start  time.Time
-	bytes  int
+	bytes  uint64
 }
 
 type proxy struct {
@@ -64,8 +64,8 @@ func (p *proxy) proxyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := &client{
-		source: r.RemoteAddr,
-		dest:   addr.String(),
+		client: r.RemoteAddr,
+		source: addr.String(),
 		start:  time.Now(),
 	}
 
@@ -95,7 +95,7 @@ func (p *proxy) proxyHandler(w http.ResponseWriter, r *http.Request) {
 				log.Printf("failed to flush: %v", err)
 				return
 			}
-			client.bytes += wn
+			client.bytes += uint64(wn)
 		}
 	}
 }

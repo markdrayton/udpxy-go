@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -20,12 +21,12 @@ var tmpl = template.Must(template.New("stats").Parse(`<!DOCTYPE html>
 	<body>
 		<table>
 			<tr>
-				<th>Source</th><th>Dest</th><th>Elapsed</th><th>Bytes read</th>
+				<th>Client</th><th>Source</th><th>Elapsed</th><th>Bytes read</th>
 			</tr>
 			{{range .}}
 			<tr>
+				<td>{{.Client}}</td>
 				<td>{{.Source}}</td>
-				<td>{{.Dest}}</td>
 				<td>{{.Elapsed}}</td>
 				<td>{{.Bytes}}</td>
 			</tr>
@@ -34,21 +35,32 @@ var tmpl = template.Must(template.New("stats").Parse(`<!DOCTYPE html>
 	</body>
 </html>`))
 
+func humanizeBytes(bytes uint64) string {
+	switch {
+	case bytes > (1024 * 1024):
+		return fmt.Sprintf("%.f MiB", float64(bytes)/1024/1024)
+	case bytes > 1024:
+		return fmt.Sprintf("%.f KiB", float64(bytes)/1024)
+	default:
+		return fmt.Sprintf("%d B", bytes)
+	}
+}
+
 func (p *proxy) statsHandler(w http.ResponseWriter, r *http.Request) {
 	type client struct {
+		Client  string
 		Source  string
-		Dest    string
 		Elapsed string
-		Bytes   int
+		Bytes   string
 	}
 	stats := []client{}
 	p.mu.Lock()
 	for _, c := range p.clients {
 		stats = append(stats, client{
+			Client:  c.client,
 			Source:  c.source,
-			Dest:    c.dest,
-			Elapsed: time.Since(c.start).String(),
-			Bytes:   c.bytes,
+			Elapsed: time.Since(c.start).Round(time.Second).String(),
+			Bytes:   humanizeBytes(c.bytes),
 		})
 	}
 	p.mu.Unlock()
